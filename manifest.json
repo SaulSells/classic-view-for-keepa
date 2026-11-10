@@ -1,0 +1,75 @@
+{
+  "manifest_version": 3,
+  "name": "Classic view for Keepa (unofficial)",
+  "version": "0.3.2",
+  "description": "Unofficial. Shows Keepa in its October 2026 layout on keepa.com product pages and in the Keepa box on Amazon, with a toggle. Not affiliated with Keepa.",
+  "permissions": [
+    "storage",
+    "declarativeNetRequest",
+    "unlimitedStorage"
+  ],
+  "host_permissions": [
+    "https://keepa.com/*",
+    "https://web.archive.org/*",
+    "https://*.amazon.com/*",
+    "https://*.amazon.ca/*",
+    "https://*.amazon.com.mx/*",
+    "https://*.amazon.com.br/*",
+    "https://*.amazon.co.uk/*",
+    "https://*.amazon.de/*",
+    "https://*.amazon.fr/*",
+    "https://*.amazon.it/*",
+    "https://*.amazon.es/*",
+    "https://*.amazon.nl/*",
+    "https://*.amazon.se/*",
+    "https://*.amazon.pl/*",
+    "https://*.amazon.com.be/*",
+    "https://*.amazon.com.tr/*",
+    "https://*.amazon.ae/*",
+    "https://*.amazon.sa/*",
+    "https://*.amazon.eg/*",
+    "https://*.amazon.in/*",
+    "https://*.amazon.co.jp/*",
+    "https://*.amazon.com.au/*",
+    "https://*.amazon.sg/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "declarative_net_request": {
+    "rule_resources": [
+      {
+        "id": "classic",
+        "enabled": false,
+        "path": "rules_classic.json"
+      }
+    ]
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://keepa.com/*"
+      ],
+      "js": [
+        "main.js"
+      ],
+      "run_at": "document_start",
+      "world": "MAIN",
+      "all_frames": true
+    },
+    {
+      "matches": [
+        "https://keepa.com/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_start",
+      "all_frames": true
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Classic view for Keepa"
+  }
+}

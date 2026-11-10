@@ -1,0 +1,41 @@
+[
+  {
+    "id": 1,
+    "priority": 1,
+    "action": {
+      "type": "modifyHeaders",
+      "responseHeaders": [
+        { "header": "content-security-policy", "operation": "remove" },
+        { "header": "content-security-policy-report-only", "operation": "remove" }
+      ]
+    },
+    "condition": {
+      "regexFilter": "^https://keepa\\.com/((product/[^?#]*)?(\\?.*)?|keepaBox\\.html(\\?.*)?)$",
+      "resourceTypes": ["main_frame", "sub_frame"]
+    }
+  },
+  {
+    "id": 2,
+    "priority": 1,
+    "action": {
+      "type": "redirect",
+      "redirect": { "transform": { "queryTransform": { "addOrReplaceParams": [{ "key": "kc", "value": "1" }] } } }
+    },
+    "condition": {
+      "regexFilter": "^https://keepa\\.com/(product/[^?#]*)?$",
+      "resourceTypes": ["main_frame"]
+    }
+  },
+  {
+    "id": 3,
+    "priority": 1,
+    "action": {
+      "type": "redirect",
+      "redirect": { "transform": { "queryTransform": { "addOrReplaceParams": [{ "key": "kc", "value": "1" }] } } }
+    },
+    "condition": {
+      "regexFilter": "^https://keepa\\.com/keepaBox\\.html$",
+      "resourceTypes": ["sub_frame"]
+    }
+  }
+]
