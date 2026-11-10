@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Classic view for Keepa (unofficial)",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "description": "Unofficial. Shows Keepa in its October 2026 layout on keepa.com product pages and in the Keepa box on Amazon, with a toggle. Not affiliated with Keepa.",
   "permissions": [
     "storage",

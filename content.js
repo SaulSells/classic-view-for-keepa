@@ -28,6 +28,8 @@
   const flagged = () => /(?:^|[?&])kc=1(?:&|$)/.test(location.search.slice(1));
   const classicUrl = r => 'https://keepa.com/?kc=1#!product/' + r;
   const newUrl = r => 'https://keepa.com/product/' + r;
+  // kc=0: the same page on the new site under Keepa's own script policy (main.js explains why).
+  const keepNewUrl = () => location.pathname + location.search.replace(/(^|[?&])kc=1(?=&|$)/, '$1kc=0') + location.hash;
 
   // A few reloads at most per tab session, so a bad state can never loop.
   function safeGo(url) {
@@ -40,7 +42,7 @@
   function fallBack(note) {
     ss.set(SS_BYPASS, '1');
     ss.set(SS_NOTE, note);
-    location.reload();
+    location.replace(keepNewUrl());
   }
 
   // ---------- toggle pill (shadow DOM so neither Keepa version's CSS touches it) ----------
@@ -124,10 +126,12 @@
           .x{background:transparent;color:#697585;padding:4px 6px}
         </style>
         <div class="pill" role="region" aria-label="Classic view for Keepa">
-          <span class="${note ? 'note' : ''}">${note || (classic ? 'Classic Keepa view' : 'New Keepa view')}</span>
+          <span class="${note ? 'note' : ''}"></span>
           <button class="go" type="button">${classic ? 'Switch to new' : 'Switch to classic'}</button>
           <button class="x" type="button" title="Hide until next page">✕</button>
         </div>`;
+      // The note comes from sessionStorage, which keepa.com scripts can write: text only.
+      root.querySelector('span').textContent = note || (classic ? 'Classic Keepa view' : 'New Keepa view');
       const go = root.querySelector('.go');
       go.addEventListener('click', async () => {
         const route = productRoute();
@@ -179,7 +183,7 @@
     if (!isBox) {
       // Leaving product pages inside the old app: hand over to the new site (Deals, Finder, etc.).
       window.addEventListener('hashchange', () => {
-        if (!productRoute() && location.hash.length > 2) location.replace('https://keepa.com/' + location.hash);
+        if (!productRoute() && location.hash.length > 2) location.replace('https://keepa.com/?kc=0' + location.hash);
       });
     }
   }
@@ -209,8 +213,9 @@
   // ---------- decide (same test as main.js) ----------
   const route = productRoute();
   const bypass = ss.get(SS_BYPASS) === '1';
-  if (route && flagged() && !bypass) {
-    runClassic(route);
+  if (flagged()) {
+    // main.js sends every other kc=1 page to kc=0 (bypass stays set for that page).
+    if (route && !bypass) runClassic(route);
   } else {
     const note = ss.get(SS_NOTE);
     ss.del(SS_NOTE);

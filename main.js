@@ -17,9 +17,18 @@
     return h ? h[1] + '-' + h[2] : null;
   })();
   const flagged = /(?:^|[?&])kc=1(?:&|$)/.test(location.search.slice(1));
+  if (!flagged) return;
   let bypass = false;
   try { bypass = sessionStorage.getItem('keepaClassic.bypass') === '1'; } catch {}
-  if (!route || !flagged || bypass) return;
+
+  // On kc=1 addresses the network rule sets the October script policy, and the new site's own
+  // inline scripts do not run under it. Pages that stay on the new site (Deals, Finder, a
+  // fallback) move to kc=0, which keeps Keepa's current policy. content.js leaves them alone.
+  if (!route || bypass) {
+    document.open();
+    location.replace(location.pathname + location.search.replace(/(^|[?&])kc=1(?=&|$)/, '$1kc=0') + location.hash);
+    return;
+  }
 
   // Do not call window.stop() first: that would make document.open() a no-op.
   document.open();
@@ -42,6 +51,11 @@
   // Sep 4 grid.js lacks. This is a port of Keepa's own "Check stock past limit" tool for the
   // Offers table toolbar, using the October labels.
   const GRID_ADDON = `
+;(function(){
+var on=function(type,attr,fn){document.addEventListener(type,function(e){var t=e.target&&e.target.closest&&e.target.closest("["+attr+"]");if(t&&typeof GridGlossary!=="undefined")fn(t.getAttribute(attr))})};
+on("click","data-kc-glossary-print",function(id){GridGlossary.print(id)});
+on("input","data-kc-glossary-filter",function(id){GridGlossary.filter(id)});
+})();
 ;(function(){try{
 if(typeof GridOffer==="undefined"||GridOffer.setQuantityCheck)return;
 var st={status:null,running:!1,outcome:null,run:null};
@@ -62,32 +76,70 @@ GridOffer.setQuantityCheck=function(s){st=Object.assign({},st,s);render()};
 var init=GridOffer.init;if(typeof init==="function")GridOffer.init=function(){var r=init.apply(this,arguments);try{r&&r.always&&r.always(function(){setTimeout(render,0)})}catch(e){}setTimeout(render,400);return r};
 }catch(e){console.warn("[Keepa Classic] quantity check add-on",e)}})();`;
 
+  // The October policy (see rules_classic.json) allows inline scripts only by hash. Two inline
+  // handlers in grid.js become data attributes; GRID_ADDON listens for them.
+  const GRID_ATTRS = [
+    ['onclick="GridGlossary.print(\'${q}\')"', 'data-kc-glossary-print="${q}"'],
+    ['oninput="GridGlossary.filter(\'${q}\')"', 'data-kc-glossary-filter="${q}"'],
+  ];
+
+  // This inline script runs only under the extension's policy, which lists its hash. Under
+  // Keepa's current policy it is blocked, so the network rule is not on yet.
+  const PROBE = 'document.currentScript.dataset.ok="1"';
+  const policyReady = () => {
+    const s = document.createElement('script');
+    s.textContent = PROBE;
+    document.appendChild(s);
+    const ok = s.dataset.ok === '1';
+    s.remove();
+    return ok;
+  };
+
+  // Only the first event counts: content.js sends it once, before any page code runs.
   document.addEventListener('keepa-classic-build', ev => {
     let b;
     try { b = JSON.parse(ev.detail); } catch { return done('bad-input'); }
 
-    // Keepa's script policy has no 'unsafe-eval', so this throws while the policy is still on.
-    try { new Function('return 1')(); } catch { return done('csp'); }
+    if (!policyReady()) return done('csp');
 
     const shell = SHELLS[isBox ? 'box' : 'page'];
     let html = isBox ? b.box : b.html;
     if (!html || !html.includes(shell.js) || !html.includes(shell.css)) return done('shell-changed');
 
+    let grid = String(b.grid || '');
+    for (const [from, to] of GRID_ATTRS) grid = grid.split(from).join(to);
+
     const blobUrl = (text, type) => URL.createObjectURL(new Blob([text], { type }));
     const jsUrl = blobUrl(b.js, 'text/javascript');
     const cssUrl = blobUrl(b.css, 'text/css');
     const enUrl = blobUrl(b.en, 'application/json');
-    const gridUrl = blobUrl(b.grid + GRID_ADDON, 'text/javascript');
+    const gridUrl = blobUrl(grid + GRID_ADDON, 'text/javascript');
+
+    // Two path swaps, set on this window before the old code runs (the window and its prototypes
+    // survive document.open): the October English labels for today's reworded file, and the
+    // archived grid.js for /cdn/20261013/grid.js, which Keepa no longer serves.
+    const EN_RE = /\/cdn\/languages\/en\.json\?20261013/;
+    const GRID_RE = /\/cdn\/20261013\/grid\.js$/;
+    const xhrOpen = XMLHttpRequest.prototype.open;
+    XMLHttpRequest.prototype.open = function (m, u) {
+      const args = [...arguments];
+      if (typeof u === 'string' && EN_RE.test(u)) args[1] = enUrl;
+      return xhrOpen.apply(this, args);
+    };
+    const pageFetch = window.fetch;
+    window.fetch = function (i, n) {
+      if (typeof i === 'string' && EN_RE.test(i)) i = enUrl;
+      return pageFetch.call(this, i, n);
+    };
+    const src = Object.getOwnPropertyDescriptor(HTMLScriptElement.prototype, 'src');
+    Object.defineProperty(HTMLScriptElement.prototype, 'src', {
+      configurable: true, enumerable: src.enumerable, get: src.get,
+      set(v) { if (typeof v === 'string' && GRID_RE.test(v)) v = gridUrl; src.set.call(this, v); },
+    });
 
     // The old code finds its build folder from script[src$="keepa.js"], so an inert tag keeps the
-    // Oct 13 path. Two path swaps follow: the October English labels for today's reworded file,
-    // and the archived grid.js for /cdn/20261013/grid.js, which Keepa no longer serves.
-    const pre = `<script>(function(){var EN=${JSON.stringify(enUrl)},re=/\\/cdn\\/languages\\/en\\.json\\?20261013/;
-var o=XMLHttpRequest.prototype.open;XMLHttpRequest.prototype.open=function(m,u){if(typeof u==="string"&&re.test(u))arguments[1]=EN;return o.apply(this,arguments)};
-var f=window.fetch;window.fetch=function(i,n){if(typeof i==="string"&&re.test(i))i=EN;return f.call(this,i,n)};
-var G=${JSON.stringify(gridUrl)},d=Object.getOwnPropertyDescriptor(HTMLScriptElement.prototype,"src");
-Object.defineProperty(HTMLScriptElement.prototype,"src",{configurable:!0,enumerable:d.enumerable,get:d.get,set:function(v){if(typeof v==="string"&&/\\/cdn\\/20261013\\/grid\\.js$/.test(v))v=G;d.set.call(this,v)}});})();</script>`;
-    const scripts = pre +
+    // Oct 13 path.
+    const scripts =
       '<script type="text/x-keepa-classic-ref" src="//keepa.com/cdn/20261013/keepa.js"></script>' +
       `<script src="${jsUrl}"></script>`;
     html = html.replace(shell.css, `href="${cssUrl}"`).replace(shell.js, scripts);
@@ -96,5 +148,5 @@ Object.defineProperty(HTMLScriptElement.prototype,"src",{configurable:!0,enumera
     document.write(html);
     document.close();
     done('ok');
-  });
+  }, { once: true });
 })();

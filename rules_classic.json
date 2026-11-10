@@ -5,13 +5,46 @@
     "action": {
       "type": "modifyHeaders",
       "responseHeaders": [
-        { "header": "content-security-policy", "operation": "remove" },
-        { "header": "content-security-policy-report-only", "operation": "remove" }
+        {
+          "header": "content-security-policy",
+          "operation": "set",
+          "value": "default-src 'none';frame-ancestors chrome-extension://neebplgakaahbhdphmkckjjcegoiijjo/ *.keepa.com https://keepa.com;frame-src https://*.keepa.com https://keepa.com https://challenges.cloudflare.com https://player.vimeo.com/ https://*.stripe.com;script-src 'self' blob: 'sha256-fF0+PPLSejTnO/8fiLs+ZaC1EnlewZeW9RxK7MFTSPQ=' 'sha256-67iTPjocJ5uBTeHxLDySnUzHEL8RsZey/h+k/23LCQY=' 'sha256-Ln+9dWCXbByU4kDDSZrgNycdlhjYGPY6+K0wbXWBMK4=' https://*.keepa.com https://*.stripe.com https://challenges.cloudflare.com;connect-src 'self' blob: https://*.keepa.com wss://*.keepa.com https://*.stripe.com https://challenges.cloudflare.com;child-src 'self' blob: data: *;img-src * 'self' data: https:;style-src 'self' 'unsafe-inline' blob: https://*.keepa.com;font-src 'self' data: *.keepa.com;manifest-src 'self' *.keepa.com;worker-src 'self' blob: data: *.keepa.com;"
+        },
+        {
+          "header": "content-security-policy-report-only",
+          "operation": "remove"
+        }
       ]
     },
     "condition": {
-      "regexFilter": "^https://keepa\\.com/((product/[^?#]*)?(\\?.*)?|keepaBox\\.html(\\?.*)?)$",
-      "resourceTypes": ["main_frame", "sub_frame"]
+      "regexFilter": "^https://keepa\\.com/(product/[^?#]*)?\\?([^#]*&)?kc=1(&[^#]*)?(#.*)?$",
+      "resourceTypes": [
+        "main_frame"
+      ]
+    }
+  },
+  {
+    "id": 4,
+    "priority": 1,
+    "action": {
+      "type": "modifyHeaders",
+      "responseHeaders": [
+        {
+          "header": "content-security-policy",
+          "operation": "set",
+          "value": "default-src 'none';frame-ancestors chrome-extension://neebplgakaahbhdphmkckjjcegoiijjo/ *.keepa.com https://keepa.com *.amazon.com *.amazon.co.uk *.amazon.de *.amazon.fr *.amazon.co.jp *.amazon.ca *.amazon.nl *.amazon.cn *.amazon.it *.amazon.es *.amazon.in *.amazon.com.mx *.amazon.com.au *.amazon.com.br;frame-src https://*.keepa.com https://keepa.com https://*.stripe.com https://challenges.cloudflare.com;script-src 'self' blob: 'sha256-BWxx7j5MuyKTp5qeuzlwJW6ujdJ/P+FEPIKmb9Au9jE=' 'sha256-7QR4NuGOCtfu+IfRJ2KwKLgCrkCcw/dXuqWsvpmZ+yI=' 'sha256-qflOQWm9dKY3aw5wq+DoH75Owq+O74B+nZ+VAyhBoHE=' 'sha256-Ln+9dWCXbByU4kDDSZrgNycdlhjYGPY6+K0wbXWBMK4=' https://*.keepa.com https://*.stripe.com https://challenges.cloudflare.com https://www.gstatic.com/recaptcha/ https://completion.amazon.com https://completion.amazon.co.uk https://completion.amazon.de https://completion.amazon.fr https://completion.amazon.co.jp https://completion.amazon.ca https://completion.amazon.cn https://completion.amazon.it https://completion.amazon.es https://completion.amazon.in https://completion.amazon.nl https://completion.amazon.com.mx https://completion.amazon.com.au https://completion.amazon.com.br;connect-src 'self' blob: https://*.keepa.com wss://*.keepa.com https://*.stripe.com https://challenges.cloudflare.com;child-src 'self' blob: data: *;img-src * 'self' data: https:;style-src 'self' 'unsafe-inline' blob: https://*.keepa.com;font-src 'self' data: *.keepa.com;manifest-src 'self' *.keepa.com;worker-src 'self' blob: data: *.keepa.com;"
+        },
+        {
+          "header": "content-security-policy-report-only",
+          "operation": "remove"
+        }
+      ]
+    },
+    "condition": {
+      "regexFilter": "^https://keepa\\.com/keepaBox\\.html\\?([^#]*&)?kc=1(&[^#]*)?(#.*)?$",
+      "resourceTypes": [
+        "sub_frame"
+      ]
     }
   },
   {
@@ -19,11 +52,24 @@
     "priority": 1,
     "action": {
       "type": "redirect",
-      "redirect": { "transform": { "queryTransform": { "addOrReplaceParams": [{ "key": "kc", "value": "1" }] } } }
+      "redirect": {
+        "transform": {
+          "queryTransform": {
+            "addOrReplaceParams": [
+              {
+                "key": "kc",
+                "value": "1"
+              }
+            ]
+          }
+        }
+      }
     },
     "condition": {
       "regexFilter": "^https://keepa\\.com/(product/[^?#]*)?$",
-      "resourceTypes": ["main_frame"]
+      "resourceTypes": [
+        "main_frame"
+      ]
     }
   },
   {
@@ -31,11 +77,24 @@
     "priority": 1,
     "action": {
       "type": "redirect",
-      "redirect": { "transform": { "queryTransform": { "addOrReplaceParams": [{ "key": "kc", "value": "1" }] } } }
+      "redirect": {
+        "transform": {
+          "queryTransform": {
+            "addOrReplaceParams": [
+              {
+                "key": "kc",
+                "value": "1"
+              }
+            ]
+          }
+        }
+      }
     },
     "condition": {
       "regexFilter": "^https://keepa\\.com/keepaBox\\.html$",
-      "resourceTypes": ["sub_frame"]
+      "resourceTypes": [
+        "sub_frame"
+      ]
     }
   }
 ]

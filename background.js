@@ -4,8 +4,10 @@
 // inside this extension.
 //
 // The "classic" network ruleset is the single on/off switch. While it is on, it:
-//   - removes Keepa's script policy header on product pages and the Amazon box frame, and
-//   - adds ?kc=1 to those page addresses, which the page script reads at once to decide.
+//   - adds ?kc=1 to product page addresses and the Amazon box frame, which the page script reads
+//     at once to decide, and
+//   - on kc=1 pages, sets Keepa's October policy (hash-only inline scripts, plus blob: for the
+//     verified copies) in place of today's script policy.
 // It is only turned on after every file is downloaded and verified.
 
 const BUILD = '20261013';
