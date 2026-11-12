@@ -74,13 +74,51 @@ el.innerHTML=h;el.style.display=h?"":"none";
 var t=el.querySelector('.trigger[aria-disabled="false"]');t&&t.addEventListener("click",function(){st.run&&st.run()})}
 GridOffer.setQuantityCheck=function(s){st=Object.assign({},st,s);render()};
 var init=GridOffer.init;if(typeof init==="function")GridOffer.init=function(){var r=init.apply(this,arguments);try{r&&r.always&&r.always(function(){setTimeout(render,0)})}catch(e){}setTimeout(render,400);return r};
-}catch(e){console.warn("[Keepa Classic] quantity check add-on",e)}})();`;
+}catch(e){console.warn("[Keepa Classic] quantity check add-on",e)}})();
+;(function(){try{
+if(typeof GridOffer==="undefined"||typeof GridOffer.init!=="function"||GridOffer.init.kcReadings)return;
+var STALE=4320,FRESH=10080;
+var L=function(k,d){try{return (window.la&&window.la[k])||d}catch(e){return d}};
+var esc=function(s){return String(s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})};
+function hist(u){var o=u.stockCSV,t=u.stockLimit,e=[];if(!o||o.length<2)return e;var l=0,i=0,r=null,c=0;
+while(l+1<o.length||t&&i+1<t.length){var f=l+1<o.length?o[l]:Infinity,a=t&&i+1<t.length?t[i]:Infinity,s=Math.min(f,a);
+if(f===s){r=o[l+1];l+=2}if(t&&a===s){c=t[i+1];i+=2}if(r===null)continue;
+var n=r<=0?"":c===1?"limit":c>1?"read":"",m=e[e.length-1];if(!m||m[1]!==r||m[2]!==n)e.push([s,r,n])}return e}
+function readings(u,e){var out=[];e.forEach(function(x){x[2]==="read"&&out.push([x[0],x[1],"least",-1])});
+var d=u.deliverableCSV;if(d)for(var i=0;i+1<d.length;i+=2){var v=d[i+1],c=v&1023,f=(v>>>10&255)-1,a=(v>>>18&255)-1;if(c<=0)continue;
+var s=a-f;out.push([d[i],c,c>=1000||f<0||a<0?"least":s<=2?"stock":s>=6?"within":"least",a])}
+return out.sort(function(x,y){return x[0]-y[0]})}
+function reading(u,e,now){var l=e.length-1;if(l<0||e[l][2]==="")return null;var lim=0;
+for(;l>0&&e[l-1][2]!=="";l--)if(!lim&&e[l][2]==="limit")lim=e[l][1];if(!lim&&e[l][2]==="limit")lim=e[l][1];
+var c=readings(u,e),f=c[c.length-1];if(!f||f[0]<e[l][0])return null;
+var at=f[0],s=u.stockLimit&&u.stockLimit.length>=2?u.stockLimit[u.stockLimit.length-1]:0;if(f[3]<0&&e[e.length-1][2]==="read"&&s>at)at=s;
+return{quantity:f[1],kind:f[2],limit:lim,fresh:now-at<=FRESH}}
+function annotate(data){var p=data&&data.products&&data.products[0];if(!p||!p.offers)return;var now=keepaTime.now();
+p.offers.forEach(function(q){if(!q)return;delete q.kcStock;delete q.kcMax;delete q.kcNote;var o=q.stockCSV;if(!o||o.length<2)return;
+var at=q.lastStockUpdate?q.lastStockUpdate:o[o.length-2];if(!at||now-at>STALE||!(o[o.length-1]>0&&q.stockLimit))return;
+var r=reading(q,hist(q),now);if(!r)return;
+q.kcStock=Math.min(r.quantity,999);q.kcMax=r.kind!=="stock"||!r.fresh;
+q.kcNote=r.limit>0?'<br><span style="color:#b26a00" title="'+esc(L("_1978","Keepa read this stock past the seller\\'s per-customer purchase limit."))+'">'+esc(L("_1963","limit #count# / customer").replace("#count#",r.limit))+'</span>':""})}
+var init=GridOffer.init;
+GridOffer.init=function(d){try{annotate(d)}catch(e){console.warn("[Keepa Classic] stock reading add-on",e)}return init.apply(this,arguments)};
+GridOffer.init.kcReadings=1;
+}catch(e){console.warn("[Keepa Classic] stock reading add-on",e)}})();`;
 
   // The October policy (see rules_classic.json) allows inline scripts only by hash. Two inline
   // handlers in grid.js become data attributes; GRID_ADDON listens for them.
   const GRID_ATTRS = [
     ['onclick="GridGlossary.print(\'${q}\')"', 'data-kc-glossary-print="${q}"'],
     ['oninput="GridGlossary.filter(\'${q}\')"', 'data-kc-glossary-filter="${q}"'],
+  ];
+
+  // The Offers stock cell: today's Keepa reads a stock-past-limit check result from a newer field
+  // (deliverableCSV) that the Sep 4 grid never reads. GRID_ADDON works the reading out on each
+  // offer (kcStock, kcMax, kcNote); these two swaps make the cell show it. Display only: totals
+  // and sold numbers stay on the October logic. Both swaps or neither, so the cell never
+  // refers to names that were not added.
+  const GRID_STOCK = [
+    ['stockIsMax:z}=k??{};', 'stockIsMax:z,kcStock:KS,kcMax:KM,kcNote:KN}=k??{};'],
+    ['${D??"?"}${z?"+":""}<br>', '${KS??D??"?"}${(KM??z)?"+":""}${KN||""}<br>'],
   ];
 
   // This inline script runs only under the extension's policy, which lists its hash. Under
@@ -108,6 +146,9 @@ var init=GridOffer.init;if(typeof init==="function")GridOffer.init=function(){va
 
     let grid = String(b.grid || '');
     for (const [from, to] of GRID_ATTRS) grid = grid.split(from).join(to);
+    if (GRID_STOCK.every(([from]) => grid.split(from).length === 2)) {
+      for (const [from, to] of GRID_STOCK) grid = grid.split(from).join(to);
+    }
 
     const blobUrl = (text, type) => URL.createObjectURL(new Blob([text], { type }));
     const jsUrl = blobUrl(b.js, 'text/javascript');
